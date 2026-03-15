@@ -36,7 +36,7 @@ if [ "$PRESET_NAME" = $'[ Export All Preset ]\u2063' ]; then
   while IFS='|' read -r p_name p_type; do
     echo ">>> Exporting $p_name ($p_type)..."
     OUT=$(get_output_path "$p_name" "$p_type")
-    godot $EXPORT_FLAG "$p_name" "$OUT" 2>&1 | grep -v "VisualServer attempted to free a NULL RID\|at: free (servers/visual"
+    godot --headless $EXPORT_FLAG "$p_name" "$OUT" 2>&1 | grep -v "VisualServer attempted to free a NULL RID\|at: free (servers/visual"
     GODOT_EXIT=${PIPESTATUS[0]}
     if [ $GODOT_EXIT -ne 0 ]; then
       echo "Export failed with exit code $GODOT_EXIT"
@@ -51,7 +51,7 @@ else
 
   OUT=$(get_output_path "$PRESET_NAME" "$PLATFORM")
 
-  godot $EXPORT_FLAG "$PRESET_NAME" "$OUT" 2>&1 | grep -v "VisualServer attempted to free a NULL RID\|at: free (servers/visual"
+  godot --headless $EXPORT_FLAG "$PRESET_NAME" "$OUT" 2>&1 | grep -v "VisualServer attempted to free a NULL RID\|at: free (servers/visual"
   GODOT_EXIT=${PIPESTATUS[0]}
   if [ $GODOT_EXIT -ne 0 ]; then
     echo "Export failed with exit code $GODOT_EXIT"
