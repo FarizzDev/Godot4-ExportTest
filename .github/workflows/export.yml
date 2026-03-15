@@ -1,0 +1,132 @@
+name: Export Godot Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      godot_link:
+        required: true
+        default: "https://github.com/godotengine/godot/releases/download/3.6-stable/Godot_v3.6-stable_linux_headless.64.zip"
+        description: "Enter Godot link:"
+      templates_link:
+        required: true
+        default: "https://github.com/godotengine/godot/releases/download/3.6-stable/Godot_v3.6-stable_export_templates.tpz"
+        description: "Enter Export Templates link:"
+      preset_name:
+        required: true
+        default: "Android"
+        description: "Enter platform:"
+      debug:
+        description: "Debug version"
+        type: boolean
+        default: false
+      cache:
+        description: "Cache"
+        type: boolean
+        default: true
+      file_basename:
+        description: "Base name for output files (e.g., MyGame)"
+        required: true
+        default: "GoduxExport"
+      cert_cn:
+        description: "Certificate CN (e.g., Your Name, Your Company)"
+        required: false
+        default: "Godux User"
+      org:
+        description: "Organization for Android (O)"
+        required: false
+        default: "Android"
+      country:
+        description: "2-letter Country Code for Android (C)"
+        required: false
+        default: "US"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GODOT_LINK: ${{ inputs.godot_link }}
+      TEMPLATES_LINK: ${{ inputs.templates_link }}
+      PRESET_NAME: ${{ inputs.preset_name }}
+      KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+      KEYSTORE_USER: ${{ secrets.KEYSTORE_USER }}
+      DEBUG: ${{ inputs.debug }}
+      CACHE: ${{ inputs.cache }}
+      FILE_BASENAME: ${{ inputs.file_basename }}
+      CERT_CN: ${{ inputs.cert_cn }}
+      ORG: ${{ inputs.org }}
+      COUNTRY: ${{ inputs.country }}
+
+    steps:
+      - name: 🛒 Checkout repository
+        uses: actions/checkout@v3
+
+      - name: ⚙️ Prepare
+        run: bash .github/scripts/prepare-build.sh
+        env:
+          GODOT_LINK: ${{ env.GODOT_LINK }}
+
+      - name: 📝 Godot Export Templates Cache
+        if: env.CACHE == 'true'
+        uses: actions/cache@v4
+        id: templates-cache
+        with:
+          path: ~/.local/share/godot/${{ env.GODOT_MAJOR == '4' && 'export_templates' || 'templates' }}/${{ env.VERSION }}
+          key: ${{ runner.os }}-godot-templates-${{ env.VERSION }}
+
+      - name: 📥 Download Godot
+        run: |
+          wget $GODOT_LINK -O godot.zip
+          unzip godot.zip
+          sudo mv Godot_* /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+
+      - name: 📤 Extract Godot Export Templates
+        if: env.CACHE == 'false' || steps.templates-cache.outputs.cache-hit != 'true'
+        run: |
+          TEMPLATES_DIR=~/.local/share/godot/$([[ "$GODOT_MAJOR" == "4" ]] && echo "export_templates" || echo "templates")/$VERSION
+          curl -L $TEMPLATES_LINK -o godot-templates.tpz
+          mkdir -p "$TEMPLATES_DIR"
+          unzip godot-templates.tpz -d ~/godot-templates
+          mv ~/godot-templates/templates/* "$TEMPLATES_DIR"/
+          rm -rf ~/godot-templates
+
+      - name: ☕ Setup JDK (For Android)
+        if: env.ISANDROID == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: 📱 Setup Android SDK (For Android)
+        if: env.ISANDROID == 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: 🔑 Setup Keystore (For Android)
+        if: env.ISANDROID == 'true'
+        run: bash .github/scripts/gen-keystore.sh
+        env:
+          DEBUG: ${{ env.DEBUG }}
+          PRESET_NAME: ${{ env.PRESET_NAME }}
+          KEYSTORE_USER: ${{ env.KEYSTORE_USER }}
+          KEYSTORE_PASS: ${{ env.KEYSTORE_PASS }}
+          CERT_CN: ${{ env.CERT_CN }}
+          ORG: ${{ env.ORG }}
+          COUNTRY: ${{ env.COUNTRY }}
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          FILE_BASENAME: ${{ env.FILE_BASENAME }}
+
+      - name: 🛠 Export
+        run: bash .github/scripts/export.sh
+        env:
+          DEBUG: ${{ env.DEBUG }}
+          PRESET_NAME: ${{ env.PRESET_NAME }}
+          FILE_BASENAME: ${{ env.FILE_BASENAME }}
+          ISANDROID: ${{ env.ISANDROID }}
+          RELEASE_KEYSTORE_PATH: ${{ env.RELEASE_KEYSTORE_PATH }}
+
+      - name: 🚀 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "build-${{ github.run_id }}" "${{ env.FILE_BASENAME }}-build.zip" --notes "Automated build from GitHub Actions"
