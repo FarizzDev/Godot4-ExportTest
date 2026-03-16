@@ -7,6 +7,7 @@ if [ ! -f export_presets.cfg ]; then
 fi
 
 if [[ -n "$EXPORT_CREDENTIALS" ]]; then
+  mkdir .godot
   echo "$EXPORT_CREDENTIALS" | base64 -d >.godot/export_credentials.cfg
 fi
 
