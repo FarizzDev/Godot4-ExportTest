@@ -49,14 +49,9 @@ jobs:
       GODOT_LINK: ${{ inputs.godot_link }}
       TEMPLATES_LINK: ${{ inputs.templates_link }}
       PRESET_NAME: ${{ inputs.preset_name }}
-      KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
-      KEYSTORE_USER: ${{ secrets.KEYSTORE_USER }}
       DEBUG: ${{ inputs.debug }}
       CACHE: ${{ inputs.cache }}
       FILE_BASENAME: ${{ inputs.file_basename }}
-      CERT_CN: ${{ inputs.cert_cn }}
-      ORG: ${{ inputs.org }}
-      COUNTRY: ${{ inputs.country }}
 
     steps:
       - name: 🛒 Checkout repository
@@ -66,6 +61,7 @@ jobs:
         run: bash .github/scripts/prepare-build.sh
         env:
           GODOT_LINK: ${{ env.GODOT_LINK }}
+          EXPORT_CREDENTIALS: ${{ secrets.EXPORT_CREDENTIALS }}
 
       - name: 📝 Godot Export Templates Cache
         if: env.CACHE == 'true'
@@ -109,11 +105,11 @@ jobs:
         env:
           DEBUG: ${{ env.DEBUG }}
           PRESET_NAME: ${{ env.PRESET_NAME }}
-          KEYSTORE_USER: ${{ env.KEYSTORE_USER }}
-          KEYSTORE_PASS: ${{ env.KEYSTORE_PASS }}
-          CERT_CN: ${{ env.CERT_CN }}
-          ORG: ${{ env.ORG }}
-          COUNTRY: ${{ env.COUNTRY }}
+          KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
+          KEYSTORE_USER: ${{ secrets.KEYSTORE_USER }}
+          CERT_CN: ${{ inputs.cert_cn }}
+          ORG: ${{ inputs.org }}
+          COUNTRY: ${{ inputs.country }}
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
           FILE_BASENAME: ${{ env.FILE_BASENAME }}
 
